@@ -11,7 +11,6 @@ load_dotenv()
 class Settings:
     """
     Central place for configuration.
-
     Reads environment variables for:
     - OpenAI
     - Supabase

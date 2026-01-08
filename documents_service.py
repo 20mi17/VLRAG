@@ -7,8 +7,7 @@ from supabase_client import get_supabase_client
 
 def supabase_ping() -> bool:
     """
-    Minimal live check against Supabase.
-    Must return ONLY True/False (no metadata, no secrets).
+    check if Supabase connection is live, returns ONLY TRUE/FALSE, no metadata.
     """
     try:
         sb = get_supabase_client()
@@ -21,14 +20,12 @@ def supabase_ping() -> bool:
 
 def get_document(doc_id: str) -> Optional[dict[str, Any]]:
     """
-    Retrieve a document by ID from Supabase.
-
-    Returns:
+    retrieve a document by ID from Supabase.
+    returns:
       - dict if found
       - None if not found
-
     Raises:
-      - Exceptions for unexpected issues (caller should translate to 500)
+      - exceptions for unexpected issues (caller should translate to 500)
     """
     sb = get_supabase_client()
     res = (

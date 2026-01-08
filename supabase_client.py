@@ -1,9 +1,5 @@
-from __future__ import annotations
-
 from typing import Optional
-
 from supabase import Client, create_client
-
 from config import get_settings
 
 
@@ -11,12 +7,6 @@ _client: Optional[Client] = None
 
 
 def get_supabase_client() -> Client:
-    """
-    Lazy singleton Supabase client.
-
-    - Uses SUPABASE_SERVICE_ROLE_KEY if present, otherwise SUPABASE_ANON_KEY.
-    - Does not print/log secrets.
-    """
     global _client
     if _client is not None:
         return _client

@@ -1,7 +1,4 @@
-from __future__ import annotations
-
 from fastapi import APIRouter, HTTPException
-
 from documents_service import get_document
 
 router = APIRouter(tags=["documents"])

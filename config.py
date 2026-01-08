@@ -11,7 +11,6 @@ load_dotenv()
 class Settings:
     """
     Central place for configuration.
-
     Reads environment variables for:
     - OpenAI
     - Supabase
@@ -54,7 +53,7 @@ def get_env(name: str) -> str:
         raise RuntimeError(f"Missing required environment variable: {name}")
     return value
 
-def get_settings():
+def get_required_settings():
     return {
         "SUPABASE_URL": get_env("SUPABASE_URL"),
         "SUPABASE_SERVICE_ROLE_KEY": get_env("SUPABASE_SERVICE_ROLE_KEY"),

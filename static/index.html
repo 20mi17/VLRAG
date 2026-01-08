@@ -1,0 +1,56 @@
+<!doctype html>
+<html>
+
+<head>
+    <title>VLRAG Demo</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 2rem;
+        }
+
+        input,
+        button {
+            padding: 0.5rem;
+        }
+
+        .chunk {
+            border: 1px solid #ccc;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>VLRAG Demo</h1>
+
+    <input id="q" placeholder="Search medical text..." />
+    <button onclick="search()">Search</button>
+
+    <div id="results"></div>
+
+    <script>
+        async function search() {
+            const q = document.getElementById("q").value;
+            const res = await fetch("/search", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ query: q, top_k: 3 })
+            });
+            const data = await res.json();
+            const results = document.getElementById("results");
+            results.innerHTML = "";
+            data.results.forEach(r => {
+                results.innerHTML += `
+          <div class="chunk">
+            <strong>${r.section_heading || ""}</strong>
+            <pre>${r.content}</pre>
+          </div>
+        `;
+            });
+        }
+    </script>
+</body>
+
+</html>

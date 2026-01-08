@@ -21,11 +21,36 @@ def clean_json_response(content: str) -> str:
     content = re.sub(r'```$', '', content.strip(), flags=re.MULTILINE)
     return content.strip()
 
+
+def limit_to_first_n_pages(text: str, n: int = 3) -> str:
+    """Return the text composed of the first `n` pages.
+
+    Pages are detected in this order:
+    - form-feed character ("\f")
+    - simple "Page <number>" markers on their own line
+    If no page delimiters are found the original text is returned.
+    """
+    if not text:
+        return text
+
+    # Prefer explicit form-feed page breaks
+    if "\f" in text:
+        pages = text.split("\f")
+    else:
+        # Fallback: split on common "Page <num>" markers
+        pages = re.split(r"\n\s*Page\s+\d+\b", text)
+
+    if len(pages) <= n:
+        return text
+
+    return "\n\n".join(pages[:n])
+
 def detect_headings(text: str) -> list[dict]:
     """Use LLM to identify chapter headings and structure"""
     prompt = f"""Analyze this clinical document and identify all headings and their hierarchy.
     Return a strictly valid JSON array of objects with these exact keys: "heading_text", "level" (integer 1-3), and "start_position" (integer index).
-    
+    It's very possible you will encounter an initial list of all chapter headings - ignore that and look for the actual headings, likely with new lines before and after.
+
     Document:
     {text[:5000]}
     """
@@ -237,6 +262,8 @@ def process_storage_bucket():
                 
                 content_bytes = supabase.storage.from_(bucket_name).download(file_path_in_bucket)
                 text_content = content_bytes.decode('utf-8')
+                # Limit to the first 3 pages to avoid processing whole documents
+                text_content = limit_to_first_n_pages(text_content, 3)
                 
                 process_document(
                     text=text_content, 

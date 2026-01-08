@@ -23,5 +23,5 @@ def health_deep():
         resp = supabase.table("documents").select("id").limit(1).execute()
         # if no exception, connection and auth are fine
         return {"status": "ok", "checks": {"env": "ok", "supabase": "ok"}}
-    except Exception as e:
+    except Exception:
         return {"status": "error", "checks": {"env": "ok", "supabase": "failed"}, "detail": str(e)}

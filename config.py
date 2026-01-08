@@ -47,3 +47,18 @@ def get_settings() -> Settings:
     Use this anywhere in the app instead of calling Settings() directly.
     """
     return Settings()
+
+def get_env(name: str) -> str:
+    value = os.getenv(name)
+    if not value:
+        raise RuntimeError(f"Missing required environment variable: {name}")
+    return value
+
+def get_settings():
+    return {
+        "SUPABASE_URL": get_env("SUPABASE_URL"),
+        "SUPABASE_SERVICE_ROLE_KEY": get_env("SUPABASE_SERVICE_ROLE_KEY"),
+        # Optional:
+        "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
+        "ENV": os.getenv("ENV", "dev"),
+    }

@@ -14,7 +14,7 @@ def health_deep():
     try:
         _ = get_settings()
     except Exception as e:
-        return {"status": "error", "checks": {"env": "missing_or_invalid"}, "detail": str(e)}
+        return {"status": "error", "checks": {"env": "missing_or_invalid"}}
 
     # 2) Check Supabase connectivity
     try:

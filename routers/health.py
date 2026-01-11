@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from config import get_settings
-from supabase_client import get_supabase
+from supabase_client import get_supabase_client
 
 router = APIRouter()
 
@@ -18,7 +18,7 @@ def health_deep():
 
     # 2) Check Supabase connectivity
     try:
-        supabase = get_supabase()
+        supabase = get_supabase_client()
         # simplest possible query: fetch 1 row from a known table
         resp = supabase.table("documents").select("id").limit(1).execute()
         # if no exception, connection and auth are fine

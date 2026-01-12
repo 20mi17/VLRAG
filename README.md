@@ -1,5 +1,5 @@
 # VLRAG
-## [App Link]([URL_Here](https://vlrag-688k.onrender.com/))
+## [App Link](https://vlrag-688k.onrender.com/)
 
 
 ## Environment variables

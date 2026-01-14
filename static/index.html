@@ -5,7 +5,6 @@
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            margin: 0;
             padding: 2rem;
             max-width: 800px;
             margin: 0 auto;
@@ -40,27 +39,60 @@
 
         button:hover { background-color: #005bb5; }
 
-        .chunk {
+        /* ===== Results list UI ===== */
+
+        .results-list {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .result-card {
             background: white;
             border: 1px solid #e1e1e1;
-            border-radius: 8px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
+            border-radius: 12px;
+            padding: 1.2rem 1.3rem;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
 
-        .chunk-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 0.8rem;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 0.5rem;
+        /* ✅ Hover/interaction polish + whole-card clickable */
+        .result-card {
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
         }
 
-        .chunk-title {
-            font-weight: 600;
+        .result-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+        }
+
+        
+        .result-card a {
+            text-decoration: none;
+        }
+
+        .result-card a:hover {
+            text-decoration: underline;
+        }
+
+        .result-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .result-title-link {
+            font-weight: 700;
+            font-size: 1.05rem;
             color: #2c3e50;
+            text-decoration: none;
+            line-height: 1.2;
+        }
+
+        .result-title-link:hover {
+            text-decoration: underline;
         }
 
         .source-link {
@@ -68,19 +100,36 @@
             color: #0070f3;
             text-decoration: none;
             font-weight: 500;
+            white-space: nowrap;
         }
 
         .source-link:hover { text-decoration: underline; }
 
-        pre {
-            white-space: pre-wrap;
-            color: #444;
+        .result-meta {
+            color: #666;
+            font-size: 0.92rem;
+            margin-bottom: 10px;
+        }
+
+        .result-snippet {
+            color: #333;
             line-height: 1.5;
             margin: 0;
-            font-family: inherit;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.15rem 0.45rem;
+            border: 1px solid #e6e6e6;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            color: #555;
+            background: #fafafa;
+            margin-left: 8px;
         }
     </style>
 </head>
+
 <body>
     <h1>VLRAG Clinical Search</h1>
 
@@ -96,11 +145,39 @@
             if (e.key === 'Enter') search();
         }
 
+        function escapeHtml(s) {
+            return String(s ?? "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#039;");
+        }
+
+        function sourceFromUrl(url) {
+            try {
+                return new URL(url).hostname.replace("www.", "");
+            } catch {
+                return "";
+            }
+        }
+
+        function makeSnippet(text, maxChars = 220) {
+            const cleaned = String(text ?? "").replace(/\s+/g, " ").trim();
+            if (!cleaned) return "";
+            const parts = cleaned.split(/(?<=[.!?])\s+/);
+            const snippet = parts.slice(0, 2).join(" ");
+            return snippet.length > maxChars
+                ? snippet.slice(0, maxChars).trim() + "…"
+                : snippet;
+        }
+
         async function search() {
             const q = document.getElementById("q").value;
             const resultsDiv = document.getElementById("results");
-            
+
             if (!q.trim()) return;
+
             
             resultsDiv.innerHTML = '<p style="color: #666;">Searching guidelines...</p>';
 
@@ -108,33 +185,61 @@
                 const res = await fetch("/search", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ query: q, top_k: 3 })
+                    body: JSON.stringify({ query: q, top_k: 5 })
                 });
 
                 const data = await res.json();
                 resultsDiv.innerHTML = "";
 
-                if (data.results.length === 0) {
+                if (!data.results || data.results.length === 0) {
                     resultsDiv.innerHTML = '<p>No relevant guidelines found.</p>';
                     return;
                 }
 
-                data.results.forEach(r => {
-                    // Logic: If r.url exists, create a link. Otherwise show nothing.
-                    const linkHtml = r.url 
-                        ? `<a href="${r.url}" target="_blank" class="source-link">View Source ↗</a>` 
+                let html = `<div class="results-list">`;
+
+                data.results.slice(0, 5).forEach((r, idx) => {
+                    const url = r.url || "";
+                    const title = r.title || r.document_title || r.section_heading || `Result ${idx + 1}`;
+                    const source = url ? sourceFromUrl(url) : "";
+                    const snippet = makeSnippet(r.content);
+
+                    const titleHtml = url
+                        ? `<a class="result-title-link" href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(title)}</a>`
+                        : `<span class="result-title-link">${escapeHtml(title)}</span>`;
+
+                    // ✅ Stop link click from also triggering card click
+                    const viewSourceHtml = url
+                        ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" class="source-link" onclick="event.stopPropagation()">View Source ↗</a>`
                         : `<span style="color:#999; font-size:0.9rem">No URL mapped</span>`;
 
-                    resultsDiv.innerHTML += `
-                      <div class="chunk">
-                        <div class="chunk-header">
-                            <span class="chunk-title">${r.section_heading || "General Section"}</span>
-                            ${linkHtml}
+                    // ✅ Make whole card clickable if URL exists
+                    const cardClick = url
+                        ? `onclick="window.open('${escapeHtml(url)}','_blank')"`
+                        : "";
+
+                    html += `
+                        <div class="result-card" ${cardClick}>
+                            <div class="result-top">
+                                <div>
+                                    ${titleHtml}
+                                    ${r.section_heading ? `<span class="badge">${escapeHtml(r.section_heading)}</span>` : ""}
+                                </div>
+                                ${viewSourceHtml}
+                            </div>
+
+                            <div class="result-meta">
+                                ${source ? `<strong>Source:</strong> ${escapeHtml(source)}` : `<span style="color:#999">Source unknown</span>`}
+                            </div>
+
+                            <p class="result-snippet">${escapeHtml(snippet)}</p>
                         </div>
-                        <pre>${r.content}</pre>
-                      </div>
                     `;
                 });
+
+                html += `</div>`;
+                resultsDiv.innerHTML = html;
+
             } catch (err) {
                 resultsDiv.innerHTML = `<p style="color: red;">Error: ${err.message}</p>`;
             }

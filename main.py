@@ -3,9 +3,6 @@ from fastapi.staticfiles import StaticFiles
 from routers.health import router as health_router
 from routers.documents import router as documents_router
 from routers.search import router as search_router
-from pydantic import BaseModel
-from typing import Optional
-from lang_pipeline import run_pipeline
 
 app = FastAPI()
 

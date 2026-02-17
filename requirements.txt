@@ -9,6 +9,7 @@ asyncpg==0.29.0
 # === LLM Orchestration ===
 langchain==0.3.7
 langgraph==0.2.34
+langchain-openai
 
 # === Model Provider SDKs ===
 openai==1.52.0

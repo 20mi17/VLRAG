@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional
 from search_service import search_chunks
+import traceback
 
 router = APIRouter(tags=["search"])
 
@@ -15,5 +16,6 @@ def search(req: SearchRequest):
     try:
         results = search_chunks(req.query, req.top_k, req.document_id)
         return {"query": req.query, "results": results}
-    except Exception:
-        raise HTTPException(status_code=500, detail="Search failed")
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")

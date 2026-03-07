@@ -1,231 +1,89 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 
 <head>
-    <title>VLRAG Clinical Search</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            padding: 2rem;
-            max-width: 980px;
-            margin: 0 auto;
-            background-color: #f9f9f9;
-        }
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VLRAG</title>
 
-        h1,
-        h2 {
-            color: #333;
-        }
-
-        .panel {
-            background: white;
-            border: 1px solid #e1e1e1;
-            border-radius: 12px;
-            padding: 1.25rem;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        }
-
-        .search-container,
-        .upload-container {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 1rem;
-            align-items: center;
-        }
-
-        input[type="text"],
-        input[type="file"] {
-            flex-grow: 1;
-            padding: 0.8rem;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 1rem;
-            background: white;
-        }
-
-        button {
-            padding: 0.8rem 1.1rem;
-            background-color: #0070f3;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.95rem;
-        }
-
-        button:hover {
-            background-color: #005bb5;
-        }
-
-        button.secondary {
-            background-color: #666;
-        }
-
-        button.secondary:hover {
-            background-color: #4e4e4e;
-        }
-
-        button.success {
-            background-color: #15803d;
-        }
-
-        button.success:hover {
-            background-color: #166534;
-        }
-
-        button.danger {
-            background-color: #b91c1c;
-        }
-
-        button.danger:hover {
-            background-color: #991b1b;
-        }
-
-        .results-list,
-        .uploads-list {
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
-        }
-
-        .result-card,
-        .upload-card {
-            background: white;
-            border: 1px solid #e1e1e1;
-            border-radius: 12px;
-            padding: 1.2rem 1.3rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        }
-
-        .result-card {
-            cursor: pointer;
-            transition: transform 0.15s ease, box-shadow 0.15s ease;
-        }
-
-        .result-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
-        }
-
-        .result-top,
-        .upload-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 12px;
-            margin-bottom: 8px;
-        }
-
-        .result-title-link,
-        .upload-title {
-            font-weight: 700;
-            font-size: 1.05rem;
-            color: #2c3e50;
-            text-decoration: none;
-            line-height: 1.2;
-        }
-
-        .result-title-link:hover {
-            text-decoration: underline;
-        }
-
-        .source-link {
-            font-size: 0.9rem;
-            color: #0070f3;
-            text-decoration: none;
-            font-weight: 500;
-            white-space: nowrap;
-        }
-
-        .source-link:hover {
-            text-decoration: underline;
-        }
-
-        .result-meta,
-        .upload-meta {
-            color: #666;
-            font-size: 0.92rem;
-            margin-bottom: 10px;
-        }
-
-        .result-snippet,
-        .upload-snippet {
-            color: #333;
-            line-height: 1.5;
-            margin: 0;
-        }
-
-        .badge {
-            display: inline-block;
-            padding: 0.15rem 0.45rem;
-            border: 1px solid #e6e6e6;
-            border-radius: 999px;
-            font-size: 0.8rem;
-            color: #555;
-            background: #fafafa;
-            margin-left: 8px;
-        }
-
-        .actions {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin-top: 0.9rem;
-        }
-
-        .status {
-            margin-top: 0.75rem;
-            color: #555;
-        }
-
-        .small {
-            font-size: 0.9rem;
-            color: #666;
-        }
-
-        .mono {
-            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap"
+        rel="stylesheet" />
 </head>
 
 <body>
-    <h1>VLRAG Clinical Search</h1>
+    <div class="bg-orb orb-1"></div>
+    <div class="bg-orb orb-2"></div>
+    <div class="bg-orb orb-3"></div>
 
-    <div class="panel">
-        <h2>Search</h2>
-        <div class="search-container">
-            <input id="q" type="text" placeholder="Ask a clinical question (e.g. Treatment for diabetes)"
-                onkeypress="handleEnter(event)" />
-            <button onclick="search()">Search</button>
-        </div>
-        <div id="results"></div>
-    </div>
+    <main class="page">
+        <header class="hero">
+            <div class="logo">
+                <span class="title1">ALIRA</span>
+                <span class="title2">VLRAG</span>
+            </div>
+            <p class="subtitle">
+                Clinical knowledge search powered by vectorless retrieval
+            </p>
+        </header>
 
-    <div class="panel">
-        <h2>Upload & Stage Document</h2>
-        <div class="upload-container">
-            <input id="fileUpload" type="file" />
-            <button onclick="uploadDoc()">Upload</button>
-            <button class="secondary" onclick="refreshUploads()">Refresh Uploads</button>
-        </div>
-        <div class="small">Supported: .txt, .md, .pdf, .docx</div>
-        <div id="uploadStatus" class="status"></div>
-    </div>
+        <section class="panel">
+            <h2>Search</h2>
 
-    <div class="panel">
-        <h2>Staged / Promoted Uploads</h2>
-        <div id="uploads"></div>
-    </div>
+            <div class="search-container">
+                <input id="q" type="text" placeholder="Ask a clinical question..." onkeypress="handleEnter(event)" />
+                <button class="primary" onclick="search()">Search</button>
+            </div>
+
+            <div id="results"></div>
+        </section>
+
+        <section class="panel">
+            <h2>Upload Document</h2>
+
+            <div class="upload-container">
+                <input id="fileUpload" type="file" />
+                <button class="primary" onclick="uploadDoc()">Upload</button>
+                <button class="secondary" onclick="refreshUploads()">Refresh</button>
+            </div>
+
+            <div class="small">Supported: .txt .pdf .docx</div>
+            <div id="uploadStatus" class="status"></div>
+        </section>
+
+        <section class="panel">
+            <h2>Uploads</h2>
+            <div id="uploads"></div>
+        </section>
+
+        <section class="ticker-wrapper">
+            <div class="ticker">
+                <span>Douglas Chen</span>
+                <span>Harsh Kalyani</span>
+                <span>Muhammad Ibrahim</span>
+                <span>Tyler Shea</span>
+                <span> •• </span>
+                <span>Douglas Chen</span>
+                <span>Harsh Kalyani</span>
+                <span>Muhammad Ibrahim</span>
+                <span>Tyler Shea</span>
+            </div>
+        </section>
+
+        <footer class="footer">
+            Built as a Capstone Project for <strong>Queen's University</strong><br />
+            in collaboration with <strong>ALIRA Medical</strong>
+        </footer>
+    </main>
 
     <script>
         function handleEnter(e) {
-            if (e.key === 'Enter') search();
+            if (e.key === "Enter") search();
         }
 
-        function escapeHtml(s) {
-            return String(s ?? "")
+        function escapeHtml(value) {
+            return String(value ?? "")
                 .replaceAll("&", "&amp;")
                 .replaceAll("<", "&lt;")
                 .replaceAll(">", "&gt;")
@@ -241,239 +99,170 @@
             }
         }
 
-        function makeSnippet(text, maxChars = 220) {
-            const cleaned = String(text ?? "").replace(/\s+/g, " ").trim();
-            if (!cleaned) return "";
-            const parts = cleaned.split(/(?<=[.!?])\s+/);
-            const snippet = parts.slice(0, 2).join(" ");
-            return snippet.length > maxChars
-                ? snippet.slice(0, maxChars).trim() + "…"
-                : snippet;
-        }
-
         async function search() {
             const q = document.getElementById("q").value;
-            const resultsDiv = document.getElementById("results");
+            const results = document.getElementById("results");
 
             if (!q.trim()) return;
 
-            resultsDiv.innerHTML = '<p style="color: #666;">Searching guidelines...</p>';
+            results.innerHTML = "<p class='small'>Searching...</p>";
 
             try {
                 const res = await fetch("/search", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ query: q, top_k: 5 })
+                    body: JSON.stringify({ query: q, top_k: 5 }),
                 });
 
                 const data = await res.json();
-                resultsDiv.innerHTML = "";
 
                 if (!data.results || data.results.length === 0) {
-                    resultsDiv.innerHTML = '<p>No relevant guidelines found.</p>';
+                    results.innerHTML = "<p>No results</p>";
                     return;
                 }
 
                 let html = `<div class="results-list">`;
 
-                data.results.slice(0, 5).forEach((r, idx) => {
+                data.results.forEach((r, index) => {
+                    const title = r.title || r.document_title || `Result ${index + 1}`;
+                    const section = r.section_heading || "";
+                    const content = (r.content || "").slice(0, 250);
                     const url = r.url || "";
-                    const title = r.title || r.document_title || r.section_heading || `Result ${idx + 1}`;
-                    const source = url ? sourceFromUrl(url) : "";
-                    const snippet = makeSnippet(r.content);
-
-                    const titleHtml = url
-                        ? `<a class="result-title-link" href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(title)}</a>`
-                        : `<span class="result-title-link">${escapeHtml(title)}</span>`;
-
-                    const viewSourceHtml = url
-                        ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" class="source-link" onclick="event.stopPropagation()">View Source ↗</a>`
-                        : `<span style="color:#999; font-size:0.9rem">No URL mapped</span>`;
-
-                    const cardClick = url
-                        ? `onclick="window.open('${escapeHtml(url)}','_blank')"`
-                        : "";
+                    const source = sourceFromUrl(url);
 
                     html += `
-                        <div class="result-card" ${cardClick}>
-                            <div class="result-top">
-                                <div>
-                                    ${titleHtml}
-                                    ${r.section_heading ? `<span class="badge">${escapeHtml(r.section_heading)}</span>` : ""}
-                                </div>
-                                ${viewSourceHtml}
-                            </div>
+            <article class="result-card">
+              <div class="card-top">
+                <div>
+                  <div class="card-title">${escapeHtml(title)}</div>
+                  ${section
+                            ? `<div class="upload-meta">${escapeHtml(section)}</div>`
+                            : ""
+                        }
+                </div>
 
-                            <div class="result-meta">
-                                ${source ? `<strong>Source:</strong> ${escapeHtml(source)}` : `<span style="color:#999">Source unknown</span>`}
-                            </div>
+                ${url
+                            ? `<a class="source-link" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">View source ↗</a>`
+                            : `<span class="source-link disabled">No source</span>`
+                        }
+              </div>
 
-                            <p class="result-snippet">${escapeHtml(snippet)}</p>
-                        </div>
-                    `;
+              ${source
+                            ? `<div class="card-source">Source: ${escapeHtml(source)}</div>`
+                            : ""
+                        }
+
+              <p>${escapeHtml(content)}${content.length >= 250 ? "..." : ""}</p>
+            </article>
+          `;
                 });
 
                 html += `</div>`;
-                resultsDiv.innerHTML = html;
+                results.innerHTML = html;
             } catch (err) {
-                resultsDiv.innerHTML = `<p style="color: red;">Error: ${escapeHtml(err.message)}</p>`;
+                results.innerHTML = "<p>Search failed</p>";
             }
         }
 
         async function uploadDoc() {
-            const fileInput = document.getElementById("fileUpload");
-            const statusDiv = document.getElementById("uploadStatus");
+            const file = document.getElementById("fileUpload").files[0];
+            const status = document.getElementById("uploadStatus");
 
-            if (!fileInput.files.length) {
-                statusDiv.innerHTML = '<p style="color:red;">Pick a file first.</p>';
+            if (!file) {
+                status.innerHTML = "Select a file first";
                 return;
             }
 
             const formData = new FormData();
-            formData.append("file", fileInput.files[0]);
+            formData.append("file", file);
 
-            statusDiv.innerHTML = '<p>Uploading and staging document...</p>';
+            status.innerHTML = "Uploading...";
 
             try {
-                const res = await fetch("/uploads", {
-                    method: "POST",
-                    body: formData
-                });
-
+                const res = await fetch("/uploads", { method: "POST", body: formData });
                 const data = await res.json();
 
                 if (!res.ok) {
-                    throw new Error(data.detail || "Upload failed");
+                    status.innerHTML = `Upload failed`;
+                    return;
                 }
 
-                statusDiv.innerHTML = `
-                    <p style="color:green;">
-                        Uploaded and staged:
-                        <strong>${escapeHtml(data.filename)}</strong>
-                        (${escapeHtml(String(data.chunk_count))} chunks)
-                    </p>
-                `;
-
-                fileInput.value = "";
-                await refreshUploads();
+                status.innerHTML = "Uploaded and staged";
+                refreshUploads();
             } catch (err) {
-                statusDiv.innerHTML = `<p style="color:red;">Error: ${escapeHtml(err.message)}</p>`;
+                status.innerHTML = "Upload failed";
             }
         }
 
-        async function postJson(url, payload = {}) {
-            const res = await fetch(url, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.detail || "Request failed");
-            return data;
+        async function promoteUpload(id) {
+            await fetch(`/uploads/${id}/promote`, { method: "POST" });
+            refreshUploads();
         }
 
-        async function promoteUpload(uploadId) {
-            try {
-                await postJson(`/uploads/${uploadId}/promote`);
-                await refreshUploads();
-            } catch (err) {
-                alert(`Promote failed: ${err.message}`);
-            }
+        async function rejectUpload(id) {
+            await fetch(`/uploads/${id}/reject`, { method: "POST" });
+            refreshUploads();
         }
 
-        async function rejectUpload(uploadId) {
-            const reason = prompt("Optional rejection reason:");
-            try {
-                await postJson(`/uploads/${uploadId}/reject`, { reason: reason || null });
-                await refreshUploads();
-            } catch (err) {
-                alert(`Reject failed: ${err.message}`);
-            }
-        }
-
-        async function rollbackUpload(uploadId) {
-            const confirmed = confirm("Rollback will remove the promoted live document. Continue?");
-            if (!confirmed) return;
-
-            try {
-                await postJson(`/uploads/${uploadId}/rollback`);
-                await refreshUploads();
-            } catch (err) {
-                alert(`Rollback failed: ${err.message}`);
-            }
-        }
-
-        function uploadActions(u) {
-            const status = u.status || "";
-
-            if (status === "staged") {
-                return `
-                    <div class="actions">
-                        <button class="success" onclick="promoteUpload('${escapeHtml(u.id)}')">Promote</button>
-                        <button class="danger" onclick="rejectUpload('${escapeHtml(u.id)}')">Reject</button>
-                    </div>
-                `;
-            }
-
-            if (status === "promoted") {
-                return `
-                    <div class="actions">
-                        <button class="danger" onclick="rollbackUpload('${escapeHtml(u.id)}')">Rollback</button>
-                    </div>
-                `;
-            }
-
-            return "";
+        async function rollbackUpload(id) {
+            await fetch(`/uploads/${id}/rollback`, { method: "POST" });
+            refreshUploads();
         }
 
         async function refreshUploads() {
-            const uploadsDiv = document.getElementById("uploads");
-            uploadsDiv.innerHTML = '<p style="color:#666;">Loading uploads...</p>';
+            const container = document.getElementById("uploads");
 
             try {
                 const res = await fetch("/uploads");
                 const data = await res.json();
-
-                if (!res.ok) {
-                    throw new Error(data.detail || "Failed to load uploads");
-                }
-
                 const uploads = data.uploads || [];
+
                 if (!uploads.length) {
-                    uploadsDiv.innerHTML = "<p>No uploads yet.</p>";
+                    container.innerHTML = "<p class='small'>No uploads yet</p>";
                     return;
                 }
 
-                let html = '<div class="uploads-list">';
+                let html = "";
+
                 uploads.forEach((u) => {
                     html += `
-                        <div class="upload-card">
-                            <div class="upload-top">
-                                <div>
-                                    <div class="upload-title">${escapeHtml(u.filename || "Unnamed file")}</div>
-                                    <div class="upload-meta">
-                                        <strong>Status:</strong> ${escapeHtml(u.status || "unknown")}
-                                        ${u.size_bytes ? ` • <strong>Size:</strong> ${escapeHtml(String(u.size_bytes))} bytes` : ""}
-                                    </div>
-                                </div>
-                                <div class="small mono">${escapeHtml(u.id || "")}</div>
-                            </div>
+            <article class="upload-card">
+              <div class="card-top">
+                <div>
+                  <div class="card-title">${escapeHtml(u.filename)}</div>
+                  <div class="upload-meta">
+                    Status: ${escapeHtml(u.status)}
+                    ${u.rolled_back_at
+                            ? `<span class="badge rollback">Rolled Back</span>`
+                            : ""
+                        }
+                  </div>
+                </div>
+              </div>
 
-                            <p class="upload-snippet">
-                                <strong>Bucket path:</strong> ${escapeHtml(u.storage_bucket || "")}/${escapeHtml(u.storage_path || "")}
-                            </p>
+              <div class="actions">
+                ${u.status === "staged"
+                            ? `
+                      <button class="success" onclick="promoteUpload('${u.id}')">Promote</button>
+                      <button class="danger" onclick="rejectUpload('${u.id}')">Reject</button>
+                    `
+                            : ""
+                        }
 
-                            ${u.error_message ? `<p class="upload-snippet" style="color:#b91c1c;"><strong>Error:</strong> ${escapeHtml(u.error_message)}</p>` : ""}
-                            ${u.review_notes ? `<p class="upload-snippet"><strong>Notes:</strong> ${escapeHtml(u.review_notes)}</p>` : ""}
-                            ${uploadActions(u)}
-                        </div>
-                    `;
+                ${u.status === "promoted"
+                            ? `
+                      <button class="danger" onclick="rollbackUpload('${u.id}')">Rollback</button>
+                    `
+                            : ""
+                        }
+              </div>
+            </article>
+          `;
                 });
-                html += "</div>";
 
-                uploadsDiv.innerHTML = html;
+                container.innerHTML = html;
             } catch (err) {
-                uploadsDiv.innerHTML = `<p style="color:red;">Error: ${escapeHtml(err.message)}</p>`;
+                container.innerHTML = "<p class='small'>Failed to load uploads</p>";
             }
         }
 

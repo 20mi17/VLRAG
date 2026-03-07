@@ -163,8 +163,11 @@ def _insert_staged_chunks(staged_document_id: str, chunks: List[Dict[str, Any]])
         section_summaries: List[str] = []
 
         for chunk in chapter_chunks:
-            summary = summarize_chunk(chunk["content"], chunk["heading"])
-            section_summaries.append(summary)
+            # if settings.has_openai:
+            #     summary = summarize_chunk(chunk["content"], chunk["heading"])
+            # else:
+            #     summary = chunk["content"][:500]
+            summary = chunk["content"][:500]
 
             rows_to_insert.append(
                 {
@@ -177,7 +180,12 @@ def _insert_staged_chunks(staged_document_id: str, chunks: List[Dict[str, Any]])
                 }
             )
 
-        chapter_summary = create_chapter_summary(section_summaries, chapter_name) if section_summaries else ""
+        # if settings.has_openai:
+        #     chapter_summary = create_chapter_summary(section_summaries, chapter_name)
+        # else:
+        #     chapter_summary = "LLM disabled"
+        chapter_summary = "LLM disabled"
+
         for row in rows_to_insert:
             if row["chapter_summary"] is None and any(
                 c["heading"] == row["section_heading"] for c in chapter_chunks
@@ -351,6 +359,24 @@ def promote_upload(upload_id: str) -> Dict[str, Any]:
 
     staged_doc = staged_doc_res.data[0]
 
+    # Make sure the filename exists in "Document URL Mapping" first,
+    # because documents.title has an FK dependency on that table.
+    mapping_res = (
+        sb.table("Document URL Mapping")
+        .select("file_name")
+        .eq("file_name", staged_doc["title"])
+        .limit(1)
+        .execute()
+    )
+
+    if not mapping_res.data:
+        sb.table("Document URL Mapping").insert(
+            {
+                "file_name": staged_doc["title"],
+                "url": staged_doc["source"],  # placeholder for uploaded docs
+            }
+        ).execute()
+
     live_doc_res = (
         sb.table("documents")
         .insert(
@@ -459,20 +485,28 @@ def rollback_upload(upload_id: str) -> Dict[str, Any]:
     if not promoted_document_id:
         raise HTTPException(status_code=400, detail="This upload has no promoted document ID")
 
+    # Delete live production content
     sb.table("chunks").delete().eq("document_id", promoted_document_id).execute()
     sb.table("documents").delete().eq("id", promoted_document_id).execute()
 
+    # Reset upload session back to staged so it can be rejected or re-promoted
     _update_upload_session(
         upload_id,
         {
-            "status": "rolled_back",
+            "status": "staged",
+            "promoted_document_id": None,
+            "promoted_at": None,
             "rolled_back_at": _utc_now_iso(),
         },
     )
+
+    # Reset staged document state too
+    sb.table("staged_documents").update({"status": "staged"}).eq("upload_session_id", upload_id).execute()
 
     return {
         "ok": True,
         "upload_id": upload_id,
         "rolled_back_document_id": promoted_document_id,
-        "status": "rolled_back",
+        "status": "staged",
+        "message": "Live document removed and upload reset to staged",
     }

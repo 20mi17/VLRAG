@@ -1,61 +1,103 @@
 <!doctype html>
 <html>
+
 <head>
     <title>VLRAG Clinical Search</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             padding: 2rem;
-            max-width: 800px;
+            max-width: 980px;
             margin: 0 auto;
             background-color: #f9f9f9;
         }
 
-        h1 { color: #333; }
-
-        .search-container {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 2rem;
+        h1,
+        h2 {
+            color: #333;
         }
 
-        input {
+        .panel {
+            background: white;
+            border: 1px solid #e1e1e1;
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .search-container,
+        .upload-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 1rem;
+            align-items: center;
+        }
+
+        input[type="text"],
+        input[type="file"] {
             flex-grow: 1;
             padding: 0.8rem;
             border: 1px solid #ddd;
             border-radius: 4px;
             font-size: 1rem;
+            background: white;
         }
 
         button {
-            padding: 0.8rem 1.5rem;
+            padding: 0.8rem 1.1rem;
             background-color: #0070f3;
             color: white;
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 1rem;
+            font-size: 0.95rem;
         }
 
-        button:hover { background-color: #005bb5; }
+        button:hover {
+            background-color: #005bb5;
+        }
 
-        /* ===== Results list UI ===== */
+        button.secondary {
+            background-color: #666;
+        }
 
-        .results-list {
+        button.secondary:hover {
+            background-color: #4e4e4e;
+        }
+
+        button.success {
+            background-color: #15803d;
+        }
+
+        button.success:hover {
+            background-color: #166534;
+        }
+
+        button.danger {
+            background-color: #b91c1c;
+        }
+
+        button.danger:hover {
+            background-color: #991b1b;
+        }
+
+        .results-list,
+        .uploads-list {
             display: flex;
             flex-direction: column;
             gap: 14px;
         }
 
-        .result-card {
+        .result-card,
+        .upload-card {
             background: white;
             border: 1px solid #e1e1e1;
             border-radius: 12px;
             padding: 1.2rem 1.3rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         }
 
-        /* ✅ Hover/interaction polish + whole-card clickable */
         .result-card {
             cursor: pointer;
             transition: transform 0.15s ease, box-shadow 0.15s ease;
@@ -63,19 +105,11 @@
 
         .result-card:hover {
             transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
         }
 
-        
-        .result-card a {
-            text-decoration: none;
-        }
-
-        .result-card a:hover {
-            text-decoration: underline;
-        }
-
-        .result-top {
+        .result-top,
+        .upload-top {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
@@ -83,7 +117,8 @@
             margin-bottom: 8px;
         }
 
-        .result-title-link {
+        .result-title-link,
+        .upload-title {
             font-weight: 700;
             font-size: 1.05rem;
             color: #2c3e50;
@@ -103,15 +138,19 @@
             white-space: nowrap;
         }
 
-        .source-link:hover { text-decoration: underline; }
+        .source-link:hover {
+            text-decoration: underline;
+        }
 
-        .result-meta {
+        .result-meta,
+        .upload-meta {
             color: #666;
             font-size: 0.92rem;
             margin-bottom: 10px;
         }
 
-        .result-snippet {
+        .result-snippet,
+        .upload-snippet {
             color: #333;
             line-height: 1.5;
             margin: 0;
@@ -127,18 +166,58 @@
             background: #fafafa;
             margin-left: 8px;
         }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 0.9rem;
+        }
+
+        .status {
+            margin-top: 0.75rem;
+            color: #555;
+        }
+
+        .small {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .mono {
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        }
     </style>
 </head>
 
 <body>
     <h1>VLRAG Clinical Search</h1>
 
-    <div class="search-container">
-        <input id="q" placeholder="Ask a clinical question (e.g. 'Treatment for diabetes')" onkeypress="handleEnter(event)" />
-        <button onclick="search()">Search</button>
+    <div class="panel">
+        <h2>Search</h2>
+        <div class="search-container">
+            <input id="q" type="text" placeholder="Ask a clinical question (e.g. Treatment for diabetes)"
+                onkeypress="handleEnter(event)" />
+            <button onclick="search()">Search</button>
+        </div>
+        <div id="results"></div>
     </div>
 
-    <div id="results"></div>
+    <div class="panel">
+        <h2>Upload & Stage Document</h2>
+        <div class="upload-container">
+            <input id="fileUpload" type="file" />
+            <button onclick="uploadDoc()">Upload</button>
+            <button class="secondary" onclick="refreshUploads()">Refresh Uploads</button>
+        </div>
+        <div class="small">Supported: .txt, .md, .pdf, .docx</div>
+        <div id="uploadStatus" class="status"></div>
+    </div>
+
+    <div class="panel">
+        <h2>Staged / Promoted Uploads</h2>
+        <div id="uploads"></div>
+    </div>
 
     <script>
         function handleEnter(e) {
@@ -178,7 +257,6 @@
 
             if (!q.trim()) return;
 
-            
             resultsDiv.innerHTML = '<p style="color: #666;">Searching guidelines...</p>';
 
             try {
@@ -208,12 +286,10 @@
                         ? `<a class="result-title-link" href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(title)}</a>`
                         : `<span class="result-title-link">${escapeHtml(title)}</span>`;
 
-                    // ✅ Stop link click from also triggering card click
                     const viewSourceHtml = url
                         ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" class="source-link" onclick="event.stopPropagation()">View Source ↗</a>`
                         : `<span style="color:#999; font-size:0.9rem">No URL mapped</span>`;
 
-                    // ✅ Make whole card clickable if URL exists
                     const cardClick = url
                         ? `onclick="window.open('${escapeHtml(url)}','_blank')"`
                         : "";
@@ -239,11 +315,170 @@
 
                 html += `</div>`;
                 resultsDiv.innerHTML = html;
-
             } catch (err) {
-                resultsDiv.innerHTML = `<p style="color: red;">Error: ${err.message}</p>`;
+                resultsDiv.innerHTML = `<p style="color: red;">Error: ${escapeHtml(err.message)}</p>`;
             }
         }
+
+        async function uploadDoc() {
+            const fileInput = document.getElementById("fileUpload");
+            const statusDiv = document.getElementById("uploadStatus");
+
+            if (!fileInput.files.length) {
+                statusDiv.innerHTML = '<p style="color:red;">Pick a file first.</p>';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("file", fileInput.files[0]);
+
+            statusDiv.innerHTML = '<p>Uploading and staging document...</p>';
+
+            try {
+                const res = await fetch("/uploads", {
+                    method: "POST",
+                    body: formData
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    throw new Error(data.detail || "Upload failed");
+                }
+
+                statusDiv.innerHTML = `
+                    <p style="color:green;">
+                        Uploaded and staged:
+                        <strong>${escapeHtml(data.filename)}</strong>
+                        (${escapeHtml(String(data.chunk_count))} chunks)
+                    </p>
+                `;
+
+                fileInput.value = "";
+                await refreshUploads();
+            } catch (err) {
+                statusDiv.innerHTML = `<p style="color:red;">Error: ${escapeHtml(err.message)}</p>`;
+            }
+        }
+
+        async function postJson(url, payload = {}) {
+            const res = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || "Request failed");
+            return data;
+        }
+
+        async function promoteUpload(uploadId) {
+            try {
+                await postJson(`/uploads/${uploadId}/promote`);
+                await refreshUploads();
+            } catch (err) {
+                alert(`Promote failed: ${err.message}`);
+            }
+        }
+
+        async function rejectUpload(uploadId) {
+            const reason = prompt("Optional rejection reason:");
+            try {
+                await postJson(`/uploads/${uploadId}/reject`, { reason: reason || null });
+                await refreshUploads();
+            } catch (err) {
+                alert(`Reject failed: ${err.message}`);
+            }
+        }
+
+        async function rollbackUpload(uploadId) {
+            const confirmed = confirm("Rollback will remove the promoted live document. Continue?");
+            if (!confirmed) return;
+
+            try {
+                await postJson(`/uploads/${uploadId}/rollback`);
+                await refreshUploads();
+            } catch (err) {
+                alert(`Rollback failed: ${err.message}`);
+            }
+        }
+
+        function uploadActions(u) {
+            const status = u.status || "";
+
+            if (status === "staged") {
+                return `
+                    <div class="actions">
+                        <button class="success" onclick="promoteUpload('${escapeHtml(u.id)}')">Promote</button>
+                        <button class="danger" onclick="rejectUpload('${escapeHtml(u.id)}')">Reject</button>
+                    </div>
+                `;
+            }
+
+            if (status === "promoted") {
+                return `
+                    <div class="actions">
+                        <button class="danger" onclick="rollbackUpload('${escapeHtml(u.id)}')">Rollback</button>
+                    </div>
+                `;
+            }
+
+            return "";
+        }
+
+        async function refreshUploads() {
+            const uploadsDiv = document.getElementById("uploads");
+            uploadsDiv.innerHTML = '<p style="color:#666;">Loading uploads...</p>';
+
+            try {
+                const res = await fetch("/uploads");
+                const data = await res.json();
+
+                if (!res.ok) {
+                    throw new Error(data.detail || "Failed to load uploads");
+                }
+
+                const uploads = data.uploads || [];
+                if (!uploads.length) {
+                    uploadsDiv.innerHTML = "<p>No uploads yet.</p>";
+                    return;
+                }
+
+                let html = '<div class="uploads-list">';
+                uploads.forEach((u) => {
+                    html += `
+                        <div class="upload-card">
+                            <div class="upload-top">
+                                <div>
+                                    <div class="upload-title">${escapeHtml(u.filename || "Unnamed file")}</div>
+                                    <div class="upload-meta">
+                                        <strong>Status:</strong> ${escapeHtml(u.status || "unknown")}
+                                        ${u.size_bytes ? ` • <strong>Size:</strong> ${escapeHtml(String(u.size_bytes))} bytes` : ""}
+                                    </div>
+                                </div>
+                                <div class="small mono">${escapeHtml(u.id || "")}</div>
+                            </div>
+
+                            <p class="upload-snippet">
+                                <strong>Bucket path:</strong> ${escapeHtml(u.storage_bucket || "")}/${escapeHtml(u.storage_path || "")}
+                            </p>
+
+                            ${u.error_message ? `<p class="upload-snippet" style="color:#b91c1c;"><strong>Error:</strong> ${escapeHtml(u.error_message)}</p>` : ""}
+                            ${u.review_notes ? `<p class="upload-snippet"><strong>Notes:</strong> ${escapeHtml(u.review_notes)}</p>` : ""}
+                            ${uploadActions(u)}
+                        </div>
+                    `;
+                });
+                html += "</div>";
+
+                uploadsDiv.innerHTML = html;
+            } catch (err) {
+                uploadsDiv.innerHTML = `<p style="color:red;">Error: ${escapeHtml(err.message)}</p>`;
+            }
+        }
+
+        refreshUploads();
     </script>
 </body>
+
 </html>

@@ -15,20 +15,24 @@ class Settings:
     - OpenAI
     - Supabase
     - Generic runtime environment marker (ENV)
+    - Upload staging settings
     """
 
     def __init__(self) -> None:
-        # openAI
+        # OpenAI
         self.openai_api_key: Optional[str] = os.getenv("OPENAI_API_KEY")
 
-        # supabase
+        # Supabase
         self.supabase_url: Optional[str] = os.getenv("SUPABASE_URL")
         self.supabase_anon_key: Optional[str] = os.getenv("SUPABASE_ANON_KEY")
         self.supabase_service_role_key: Optional[str] = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
-        # runtime environment (optional convenience flag)
-        # e.g. "local", "dev", "prod"
+        # Runtime environment
         self.env: str = os.getenv("ENV", "local")
+
+        # Upload staging config
+        self.upload_staging_bucket: str = os.getenv("UPLOAD_STAGING_BUCKET", "user-uploads-staging")
+        self.max_upload_size_mb: int = int(os.getenv("MAX_UPLOAD_SIZE_MB", "25"))
 
     @property
     def has_openai(self) -> bool:
@@ -43,9 +47,9 @@ class Settings:
 def get_settings() -> Settings:
     """
     Cached accessor so we only read env vars once.
-    Use this anywhere in the app instead of calling Settings() directly.
     """
     return Settings()
+
 
 def get_env(name: str) -> str:
     value = os.getenv(name)
@@ -53,11 +57,13 @@ def get_env(name: str) -> str:
         raise RuntimeError(f"Missing required environment variable: {name}")
     return value
 
+
 def get_required_settings():
     return {
         "SUPABASE_URL": get_env("SUPABASE_URL"),
         "SUPABASE_SERVICE_ROLE_KEY": get_env("SUPABASE_SERVICE_ROLE_KEY"),
-        # Optional:
         "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
         "ENV": os.getenv("ENV", "dev"),
+        "UPLOAD_STAGING_BUCKET": os.getenv("UPLOAD_STAGING_BUCKET", "user-uploads-staging"),
+        "MAX_UPLOAD_SIZE_MB": os.getenv("MAX_UPLOAD_SIZE_MB", "25"),
     }

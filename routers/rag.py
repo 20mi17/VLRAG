@@ -13,6 +13,6 @@ class RagRequest(BaseModel):
 def rag(req: RagRequest):
     try:
         out = run_pipeline(req.query, req.document_id)
-        return out
+        return {"query": req.query, "response": out}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"RAG failed: {str(e)}")

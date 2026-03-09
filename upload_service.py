@@ -1,5 +1,4 @@
 import io
-import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -10,20 +9,18 @@ from fastapi import HTTPException, UploadFile
 from pypdf import PdfReader
 
 from config import get_settings
-from pipeline import (
-    chunk_by_headings,
-    create_chapter_summary,
-    detect_headings,
-    summarize_chunk,
-)
 from supabase_client import get_supabase_client
-
 
 settings = get_settings()
 
 SUPPORTED_EXTENSIONS = {".txt", ".md", ".pdf", ".docx"}
 
-
+def _public_file_url(bucket: str, storage_path: str) -> str:
+    sb = get_supabase_client()
+    res = sb.storage.from_(bucket).get_public_url(storage_path)
+    if isinstance(res, dict):
+        return res.get("publicURL") or res.get("public_url") or ""
+    return getattr(res, "public_url", "") or getattr(res, "publicURL", "") or ""
 def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -80,7 +77,12 @@ def _group_chunks_by_chapter(chunks: List[Dict[str, Any]]) -> Dict[str, List[Dic
     return chapters
 
 
-def _upload_to_staging_bucket(upload_id: str, filename: str, content: bytes, content_type: Optional[str]) -> str:
+def _upload_to_staging_bucket(
+    upload_id: str,
+    filename: str,
+    content: bytes,
+    content_type: Optional[str],
+) -> str:
     sb = get_supabase_client()
     bucket_name = settings.upload_staging_bucket
     dated_prefix = datetime.now(timezone.utc).strftime("%Y/%m/%d")
@@ -148,26 +150,33 @@ def _create_staged_document(upload_id: str, filename: str, source: str, extracte
 
 
 def _insert_staged_chunks(staged_document_id: str, chunks: List[Dict[str, Any]]) -> None:
+    """
+    Insert staged chunks.
+    Pipeline functions are imported lazily so app startup/search is not coupled
+    to OpenAI initialization.
+    """
     if not chunks:
         return
 
-    sb = get_supabase_client()
+    from pipeline import create_chapter_summary, summarize_chunk
 
+    sb = get_supabase_client()
     chapters = _group_chunks_by_chapter(chunks)
-    rows_to_insert: List[Dict[str, Any]] = []
 
     for chapter_name, chapter_chunks in chapters.items():
         if not chapter_chunks:
             continue
 
+        rows_to_insert: List[Dict[str, Any]] = []
         section_summaries: List[str] = []
 
         for chunk in chapter_chunks:
-            # if settings.has_openai:
-            #     summary = summarize_chunk(chunk["content"], chunk["heading"])
-            # else:
-            #     summary = chunk["content"][:500]
-            summary = chunk["content"][:500]
+            if settings.has_openai:
+                summary = summarize_chunk(chunk["content"], chunk["heading"])
+            else:
+                summary = chunk["content"][:500]
+
+            section_summaries.append(summary)
 
             rows_to_insert.append(
                 {
@@ -180,23 +189,24 @@ def _insert_staged_chunks(staged_document_id: str, chunks: List[Dict[str, Any]])
                 }
             )
 
-        # if settings.has_openai:
-        #     chapter_summary = create_chapter_summary(section_summaries, chapter_name)
-        # else:
-        #     chapter_summary = "LLM disabled"
-        chapter_summary = "LLM disabled"
+        if settings.has_openai:
+            chapter_summary = create_chapter_summary(section_summaries, chapter_name)
+        else:
+            chapter_summary = "LLM disabled"
 
         for row in rows_to_insert:
-            if row["chapter_summary"] is None and any(
-                c["heading"] == row["section_heading"] for c in chapter_chunks
-            ):
-                row["chapter_summary"] = chapter_summary
+            row["chapter_summary"] = chapter_summary
 
-    if rows_to_insert:
         sb.table("staged_chunks").insert(rows_to_insert).execute()
 
 
 async def upload_and_stage_document(file: UploadFile) -> Dict[str, Any]:
+    """
+    Upload file to staging storage, extract text, detect headings, chunk content,
+    and create staged records.
+    """
+    from pipeline import chunk_by_headings, detect_headings
+
     sb = get_supabase_client()
 
     original_filename = file.filename or "uploaded-file.txt"
@@ -212,6 +222,7 @@ async def upload_and_stage_document(file: UploadFile) -> Dict[str, Any]:
         )
 
     upload_id = str(uuid4())
+
     storage_path = _upload_to_staging_bucket(
         upload_id=upload_id,
         filename=safe_name,
@@ -254,7 +265,9 @@ async def upload_and_stage_document(file: UploadFile) -> Dict[str, Any]:
             },
         )
 
-        sb.table("staged_documents").update({"status": "staged"}).eq("id", staged_document_id).execute()
+        sb.table("staged_documents").update(
+            {"status": "staged"}
+        ).eq("id", staged_document_id).execute()
 
         return {
             "upload_id": upload_id,
@@ -359,8 +372,21 @@ def promote_upload(upload_id: str) -> Dict[str, Any]:
 
     staged_doc = staged_doc_res.data[0]
 
-    # Make sure the filename exists in "Document URL Mapping" first,
-    # because documents.title has an FK dependency on that table.
+    staged_chunks_res = (
+        sb.table("staged_chunks")
+        .select("*")
+        .eq("staged_document_id", staged_doc["id"])
+        .order("position_in_doc")
+        .execute()
+    )
+    staged_chunks = staged_chunks_res.data or []
+
+    # Build a real public URL for the uploaded file
+    storage_bucket = session.get("storage_bucket") or settings.upload_staging_bucket
+    storage_path = session.get("storage_path")
+    public_url = _public_file_url(storage_bucket, storage_path) if storage_path else ""
+
+    # Make sure the filename exists in the mapping table first
     mapping_res = (
         sb.table("Document URL Mapping")
         .select("file_name")
@@ -373,34 +399,27 @@ def promote_upload(upload_id: str) -> Dict[str, Any]:
         sb.table("Document URL Mapping").insert(
             {
                 "file_name": staged_doc["title"],
-                "url": staged_doc["source"],  # placeholder for uploaded docs
+                "url": public_url or staged_doc["source"],
             }
         ).execute()
 
+    # Insert live document
     live_doc_res = (
         sb.table("documents")
         .insert(
             {
                 "title": staged_doc["title"],
-                "source": staged_doc["source"],
+                "source": public_url or staged_doc["source"],
                 "promoted_from_upload_session_id": upload_id,
             }
         )
         .execute()
     )
+
     if not live_doc_res.data:
         raise RuntimeError("Failed to create live document")
 
     live_doc_id = live_doc_res.data[0]["id"]
-
-    staged_chunks_res = (
-        sb.table("staged_chunks")
-        .select("*")
-        .eq("staged_document_id", staged_doc["id"])
-        .order("position_in_doc")
-        .execute()
-    )
-    staged_chunks = staged_chunks_res.data or []
 
     if staged_chunks:
         live_rows = [
@@ -424,7 +443,10 @@ def promote_upload(upload_id: str) -> Dict[str, Any]:
             "promoted_at": _utc_now_iso(),
         },
     )
-    sb.table("staged_documents").update({"status": "promoted"}).eq("id", staged_doc["id"]).execute()
+
+    sb.table("staged_documents").update(
+        {"status": "promoted"}
+    ).eq("id", staged_doc["id"]).execute()
 
     return {
         "ok": True,
@@ -432,6 +454,7 @@ def promote_upload(upload_id: str) -> Dict[str, Any]:
         "document_id": live_doc_id,
         "status": "promoted",
         "chunk_count": len(staged_chunks),
+        "public_url": public_url,
     }
 
 
@@ -449,13 +472,14 @@ def reject_upload(upload_id: str, reason: Optional[str] = None) -> Dict[str, Any
             detail=f"Only staged or failed uploads can be rejected. Current status: {session['status']}",
         )
 
-    _update_upload_session(
-        upload_id,
-        {
-            "status": "rejected",
-            "review_notes": reason,
-        },
-    )
+    # Only update columns that are very likely to exist
+    patch = {"status": "rejected"}
+
+    # If your schema has error_message and you want to store the reason there:
+    if reason:
+        patch["error_message"] = reason
+
+    _update_upload_session(upload_id, patch)
 
     sb.table("staged_documents").update({"status": "rejected"}).eq("upload_session_id", upload_id).execute()
 
@@ -465,7 +489,6 @@ def reject_upload(upload_id: str, reason: Optional[str] = None) -> Dict[str, Any
         "status": "rejected",
         "reason": reason,
     }
-
 
 def rollback_upload(upload_id: str) -> Dict[str, Any]:
     sb = get_supabase_client()
@@ -485,11 +508,9 @@ def rollback_upload(upload_id: str) -> Dict[str, Any]:
     if not promoted_document_id:
         raise HTTPException(status_code=400, detail="This upload has no promoted document ID")
 
-    # Delete live production content
     sb.table("chunks").delete().eq("document_id", promoted_document_id).execute()
     sb.table("documents").delete().eq("id", promoted_document_id).execute()
 
-    # Reset upload session back to staged so it can be rejected or re-promoted
     _update_upload_session(
         upload_id,
         {
@@ -500,7 +521,6 @@ def rollback_upload(upload_id: str) -> Dict[str, Any]:
         },
     )
 
-    # Reset staged document state too
     sb.table("staged_documents").update({"status": "staged"}).eq("upload_session_id", upload_id).execute()
 
     return {

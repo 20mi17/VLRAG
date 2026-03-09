@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from upload_service import (
@@ -62,9 +62,10 @@ def promote(upload_id: str):
 
 
 @router.post("/uploads/{upload_id}/reject")
-def reject(upload_id: str, req: RejectRequest):
+def reject(upload_id: str, req: Optional[RejectRequest] = None):
     try:
-        return reject_upload(upload_id, req.reason)
+        reason = req.reason if req else None
+        return reject_upload(upload_id, reason)
     except HTTPException:
         raise
     except Exception as e:

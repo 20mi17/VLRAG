@@ -163,11 +163,11 @@ def _insert_staged_chunks(staged_document_id: str, chunks: List[Dict[str, Any]])
         section_summaries: List[str] = []
 
         for chunk in chapter_chunks:
-            if settings.has_openai:
-                summary = summarize_chunk(chunk["content"], chunk["heading"])
-            else:
-                summary = chunk["content"][:500]
-            # summary = chunk["content"][:500]
+            # if settings.has_openai:
+            #     summary = summarize_chunk(chunk["content"], chunk["heading"])
+            # else:
+            #     summary = chunk["content"][:500]
+            summary = chunk["content"][:500]
 
             rows_to_insert.append(
                 {
@@ -180,11 +180,11 @@ def _insert_staged_chunks(staged_document_id: str, chunks: List[Dict[str, Any]])
                 }
             )
 
-        if settings.has_openai:
-            chapter_summary = create_chapter_summary(section_summaries, chapter_name)
-        else:
-            chapter_summary = "LLM disabled"
-        # chapter_summary = "LLM disabled"
+        # if settings.has_openai:
+        #     chapter_summary = create_chapter_summary(section_summaries, chapter_name)
+        # else:
+        #     chapter_summary = "LLM disabled"
+        chapter_summary = "LLM disabled"
 
         for row in rows_to_insert:
             if row["chapter_summary"] is None and any(

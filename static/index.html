@@ -108,7 +108,7 @@
             results.innerHTML = "<p class='small'>Searching...</p>";
 
             try {
-                const res = await fetch("/search", {
+                const res = await fetch("/rag", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ query: q, top_k: 5 }),

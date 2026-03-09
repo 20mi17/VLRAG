@@ -37,46 +37,58 @@ def hierarchical_structure_node(state: AgentState):
     print(f"--- NODE 1: HIERARCHICAL STRUCTURE ({state['query']}) ---")
     query = state['query']
     doc_id = state.get('document_id')
-    
+
     sb = get_supabase_client()
-    
+
     # 1. Fetch Document Structure (Table of Contents)
-    if not doc_id:
-        res = sb.table("documents").select("id").limit(1).execute()
-        if res.data:
-            doc_id = res.data[0]['id']
-        else:
+    if doc_id:
+        # Search specific document
+        res = sb.table("chunks").select("section_heading").eq("document_id", doc_id).execute()
+        if not res.data:
+            print("   No structure found.")
+            return {"target_sections": []}
+        toc = list(set([row['section_heading'] for row in res.data]))
+    else:
+        # Search all documents - aggregate TOC from all
+        doc_res = sb.table("documents").select("id").execute()
+        if not doc_res.data:
             return {"target_sections": []}
 
-    res = sb.table("chunks").select("section_heading").eq("document_id", doc_id).execute()
-    
-    if not res.data:
+        all_headings = set()
+        for doc in doc_res.data:
+            chunk_res = sb.table("chunks").select("section_heading").eq("document_id", doc['id']).execute()
+            if chunk_res.data:
+                headings = [row['section_heading'] for row in chunk_res.data]
+                all_headings.update(headings)
+
+        toc = list(all_headings)
+
+    if not toc:
         print("   No structure found.")
         return {"target_sections": []}
 
-    toc = list(set([row['section_heading'] for row in res.data]))
     toc_str = "\n".join([f"- {h}" for h in toc])
 
     # 2. LLM Reasoning to Select Sections
-    system_prompt = """You are a clinical reasoning assistant. 
-    You have the Table of Contents (TOC) for a clinical guideline. 
+    system_prompt = """You are a clinical reasoning assistant.
+    You have the Table of Contents (TOC) for clinical guidelines.
     Identify the specific section headings that are most likely to contain the answer to the user's query.
     Return ONLY a JSON array of strings matching the exact headings from the TOC."""
 
     user_prompt = f"""Query: {query}
-    
+
     Table of Contents:
     {toc_str}
-    
+
     Return JSON array of relevant headings:"""
 
     messages = [
         SystemMessage(content=system_prompt),
         HumanMessage(content=user_prompt)
     ]
-    
+
     response = llm.invoke(messages)
-    
+
     try:
         content = response.content.replace("```json", "").replace("```", "").strip()
         selected_sections = json.loads(content)
@@ -96,24 +108,36 @@ def chunk_retrieval_node(state: AgentState):
     print("--- NODE 2: CHUNK RETRIEVAL ---")
     sections = state.get("target_sections", [])
     doc_id = state.get("document_id")
-    
-    if not sections or not doc_id:
+
+    if not sections:
         return {"retrieved_chunks": []}
-        
+
     sb = get_supabase_client()
     chunks = []
-    
+
     try:
-        res = sb.table("chunks") \
-            .select("content, section_heading, id") \
-            .eq("document_id", doc_id) \
-            .in_("section_heading", sections) \
-            .execute()
-            
+        # If doc_id is provided, search only that document; otherwise search all documents
+        query = sb.table("chunks") \
+            .select("content, section_heading, id, document_id") \
+            .in_("section_heading", sections)
+
+        if doc_id:
+            query = query.eq("document_id", doc_id)
+
+        res = query.execute()
         chunks = res.data if res.data else []
+
+        # Fetch document titles for URL lookup
+        doc_ids = list(set([c['document_id'] for c in chunks]))
+        doc_res = sb.table("documents").select("id, title").in_("id", doc_ids).execute()
+        id_to_title = {d['id']: d['title'] for d in doc_res.data} if doc_res.data else {}
+
+        # Attach document title to each chunk for later URL lookup
+        for chunk in chunks:
+            chunk["document_title"] = id_to_title.get(chunk['document_id'])
     except Exception as e:
         print(f"   Error fetching chunks: {e}")
-        
+
     print(f"   Retrieved {len(chunks)} chunks.")
     return {"retrieved_chunks": chunks}
 
@@ -130,7 +154,7 @@ def validation_node(state: AgentState):
     context_text = "\n\n".join([f"Section: {c['section_heading']}\nContent: {c['content']}" for c in chunks])
     
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are a clinical validator. Determine if the provided context contains sufficient information to answer the query safely."),
+        ("system", "You are a clinical validator. Determine if the provided context contains sufficient information to answer or provide relevant related information for the query safely."),
         ("human", "Query: {query}\n\nContext:\n{context}\n\nDoes the context contain the answer? Respond with only 'yes' or 'no'.")
     ])
     
@@ -153,6 +177,32 @@ def response_formatting_node(state: AgentState):
     query = state['query']
     chunks = state.get('retrieved_chunks', [])
     feedback = state.get('review_feedback')
+    
+    # Fetch URLs from Document URL Mapping table
+    sb = get_supabase_client()
+    filenames = list(set([c.get('document_title') for c in chunks if c.get('document_title')]))
+    filename_to_url = {}
+    
+    if filenames:
+        try:
+            url_res = sb.table("Document URL Mapping").select("file_name, url").in_("file_name", filenames).execute()
+            filename_to_url = {u['file_name']: u['url'] for u in url_res.data} if url_res.data else {}
+        except Exception as e:
+            print(f"   Warning: Could not fetch URLs: {e}")
+    
+    # Format chunks as results for the frontend
+    results = []
+    for chunk in chunks:
+        doc_title = chunk.get('document_title')
+        url = filename_to_url.get(doc_title, '')
+        
+        results.append({
+            "title": chunk.get('section_heading', 'Result'),
+            "document_title": doc_title or 'Clinical Guideline',
+            "section_heading": chunk.get('section_heading', ''),
+            "content": chunk.get('content', ''),
+            "url": url
+        })
     
     context_text = "\n\n".join([f"[Source: {c['section_heading']}] {c['content']}" for c in chunks])
     
@@ -179,10 +229,13 @@ def response_formatting_node(state: AgentState):
             "answer": response.content,
             "citations": []
         }
+    
+    # Add results to final_response
+    final_json["results"] = results
         
     return {"final_response": final_json}
 
-
+"""
 # --- NODE 5: QUALITY REVIEW NODE (New Function) ---
 def quality_review_node(state: AgentState):
     print("--- NODE 5: QUALITY REVIEW ---")
@@ -197,7 +250,7 @@ def quality_review_node(state: AgentState):
         return {"review_feedback": None}
 
     # LLM grades the output
-    system_prompt = """You are a Quality Assurance auditor for a clinical AI. 
+    system_prompt = You are a Quality Assurance auditor for a clinical AI. 
     Review the provided answer. It MUST meet these criteria:
     1. It must contain specific citations in the text (e.g., [Source: ...]).
     2. The tone must be professional and clinical.
@@ -205,7 +258,6 @@ def quality_review_node(state: AgentState):
     
     If it passes, return JSON: {"status": "pass", "feedback": null}
     If it fails, return JSON: {"status": "fail", "feedback": "Specific instructions on what to fix"}
-    """
     
     user_content = f"Answer to Audit:\n{answer_text}\n\nCitations listed: {citations}"
     
@@ -233,7 +285,7 @@ def quality_review_node(state: AgentState):
         print("   Quality Check PASSED.")
         return {"review_feedback": None}
 
-
+"""
 # --- CONDITIONAL EDGES ---
 def decide_next_node(state: AgentState):
     if state["is_valid"] == "yes":
@@ -268,7 +320,7 @@ def build_graph():
     workflow.add_node("chunk_retrieval", chunk_retrieval_node)
     workflow.add_node("validation", validation_node)
     workflow.add_node("response_formatting", response_formatting_node)
-    workflow.add_node("quality_review", quality_review_node)
+    # workflow.add_node("quality_review", quality_review_node)
     workflow.add_node("insufficient_info", insufficient_info_node)
 
     # Define Edges
@@ -286,7 +338,7 @@ def build_graph():
             "insufficient_info": "insufficient_info"
         }
     )
-    
+    """
     # Edge: Formatting -> Quality Review
     workflow.add_edge("response_formatting", "quality_review")
     
@@ -299,7 +351,7 @@ def build_graph():
             "end": END
         }
     )
-    
+    """
     workflow.add_edge("insufficient_info", END)
 
     return workflow.compile()
